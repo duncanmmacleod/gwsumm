@@ -247,13 +247,14 @@ def add_output_options(parser_):
 
 
 # define hierarchichal archiving choise
-def add_archive_options(parser_):
+def add_archive_options(parser_, day=False):
     """Add archiving options to the subparser.
 
     This is only needed because argparse can't handle mutually exclusive
     groups in a parent parser handed to a subparser for some reason.
     """
-    hierarchopts = parser_.add_argument_group('Archive options')
+    hierarchopts = parser_.add_argument_group(
+        'Archive options', 'Choose if and how to archive data from this run')
     hierarchchoice = hierarchopts.add_mutually_exclusive_group()
     hierarchchoice.add_argument(
         '-a', '--archive', metavar='FILE_TAG', default=False,
@@ -262,13 +263,14 @@ def add_archive_options(parser_):
              "an HDF archive file written with the FILE_TAG. If not "
              "given, no archive will be used, if given with no file "
              "tag, a default of '%(const)s' will be used.")
-    hierarchchoice.add_argument(
-        '-d', '--daily-archive', metavar='FILE_TAG', default=False,
-        const='GW_SUMMARY_ARCHIVE',
-        nargs='?', help="Read data from the daily archives, with the "
-                        "given FILE_TAG. If not given, daily archives will be "
-                        "used, if given with no file tag, a default of "
-                        "'%(const)s' will be used.")
+    if not day:
+        hierarchchoice.add_argument(
+            '-d', '--daily-archive', metavar='FILE_TAG', default=False,
+            const='GW_SUMMARY_ARCHIVE', nargs='?',
+            help="Read data from the daily archives, with the "
+                 "given FILE_TAG. If not given, daily archives will be "
+                 "used, if given with no file tag, a default of "
+                 "'%(const)s' will be used.")
 
 # define sub-parser handler
 subparsers = parser.add_subparsers(
@@ -292,17 +294,7 @@ subparser['day'].add_argument('day', action=DayAction, type=str, nargs='?',
                               metavar=DayAction.METAVAR, default=TODAY,
                               help="Day to process")
 add_output_options(subparser['day'])
-
-darchopts = subparser['day'].add_argument_group('Archive options',
-                                                'Choose if, and how, to '
-                                                'archive data from this run')
-darchopts.add_argument('-a', '--archive', metavar='FILE_TAG',
-                       default=False, const='GW_SUMMARY_ARCHIVE', nargs='?',
-                       help="Read archived data from, and write processed data "
-                            "to, an HDF archive file written with the "
-                            "FILE_TAG. If not given, no archive will be used, "
-                            "if given with no file tag, a default of "
-                            "'%(const)s' will be used.")
+add_archive_options(subparser['day'], day=True)
 
 # WEEK mode
 subparser['week'] = subparsers.add_parser('week', parents=[sharedopts],

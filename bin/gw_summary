@@ -271,6 +271,10 @@ def add_archive_options(parser_, day=False):
                  "given FILE_TAG. If not given, daily archives will be "
                  "used, if given with no file tag, a default of "
                  "'%(const)s' will be used.")
+    hierarchopts.add_argument(
+        '-A', '--archive-root-directory', metavar='DIR', default=None,
+        help='Use DIR as the root directory for storing the archive files, '
+             'default: --output-dir argument')
 
 # define sub-parser handler
 subparsers = parser.add_subparsers(
@@ -544,6 +548,9 @@ mkdir(plotdir)
 
 if not hasattr(opts, 'archive'):
     opts.archive = False
+else:
+    if opts.archive_root_directory is None:
+        opts.archive_root_directory = os.curdir
 
 if opts.html_only:
     opts.archive = False
@@ -555,7 +562,7 @@ archives = []
 
 if opts.archive:
     from gwsumm import archive
-    archivedir = os.path.join(base, 'archive')
+    archivedir = os.path.join(opts.archive_root_directory, base, 'archive')
     mkdir(archivedir)
     opts.archive = os.path.join(archivedir, '%s-%s-%d-%d.hdf'
                                 % (ifo, opts.archive, opts.gpsstart,
@@ -576,7 +583,8 @@ if hasattr(opts, 'daily_archive') and opts.daily_archive:
         ds = tconvert(s)
         s += datetime.timedelta(days=1)
         de = tconvert(s)
-        archivedir = os.path.join(daybase, 'archive')
+        archivedir = os.path.join(
+            opts.archive_root_directory, daybase, 'archive')
         arch = os.path.join(archivedir, '%s-%s-%d-%d.hdf'
                             % (ifo, opts.daily_archive, ds, de-ds))
         if os.path.isfile(arch):

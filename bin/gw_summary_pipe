@@ -196,6 +196,9 @@ popts.add_argument('--multi-process', action='store', type=int, default=None,
 popts.add_argument('-a', '--archive', action='store_true', default=False,
                    help="Read archived data from the FILE, and "
                         "write back to it at the end")
+popts.add_argument('-A', '--archive-root-directory',
+                   help='Root directory for archive output, '
+                        'default: --output-dir value')
 popts.add_argument('-S', '--on-segdb-error', action='store', type=str,
                    default='raise', choices=['raise', 'ignore', 'warn'],
                    help="action upon error fetching segments from SegDB")
@@ -395,6 +398,9 @@ if not opts.html_wrapper_only:
             if opts.ifo and archivetag.startswith('%s_' % opts.ifo.upper()):
                 archivetag = archivetag[3:]
             node.add_var_opt('archive', archivetag)
+            if opts.archive_root_directory:
+                node.add_var_opt('archive-root-directory',
+                                 opts.archive_root_directory)
         for cf in configfile.split(','):
             node.add_input_file(cf)
         node.set_category('gw_summary')

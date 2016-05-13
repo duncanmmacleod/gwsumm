@@ -35,6 +35,10 @@ install:
   - pip install .
 
 script:
+  - which coverage
+  - head coverage
+  - python --version
+  - head setup.py
   - coverage run --source=gwsumm --omit="gwsumm/tests/*,gwsumm/*version*" ./setup.py test
   - coverage run --append --source=gwsumm --omit="gwsumm/tests/*,gwsumm/*version*" `which gw_summary` --help
   - coverage run --append --source=gwsumm --omit="gwsumm/tests/*,gwsumm/*version*" `which gw_summary_pipe` --help

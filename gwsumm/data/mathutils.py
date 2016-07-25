@@ -22,9 +22,10 @@
 import operator
 import re
 
+from gwpy.detector import Channel
 from gwpy.segments import SegmentList
 
-from ..channels import (get_channel, re_channel)
+from ..channels import get_channel
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 
@@ -65,7 +66,7 @@ def parse_math_definition(definition):
     >>> parse_math_definition('H1:TEST * L1:TEST^2')
     ([('H1:TEST', None), ('L1:TEST', (<built-in function pow>, 2.0))], [<built-in function mul>])
     """
-    breaks = re_channel.finditer(definition)
+    breaks = Channel.MATCH.finditer(definition)
     channels = []
     operators = []
     try:

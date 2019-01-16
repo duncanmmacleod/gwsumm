@@ -25,6 +25,7 @@ import hashlib
 import re
 from collections import OrderedDict
 from itertools import cycle
+from numbers import Number
 
 from six import string_types
 
@@ -36,7 +37,7 @@ from gwpy.detector import (Channel, ChannelList)
 from gwpy.segments import SegmentList
 from gwpy.plot.gps import GPSTransform
 from gwpy.plot.tex import label_to_latex
-from gwpy.plot.utils import (color_cycle, marker_cycle)
+from gwpy.plot.utils import marker_cycle
 
 from .. import globalv
 from ..utils import re_cchar
@@ -142,16 +143,17 @@ class TriggerDataPlot(TriggerPlotMixin, TimeSeriesDataPlot):
         # get columns
         xcolumn, ycolumn, ccolumn = self.columns
 
+        # pre-process parameters
+        if len(self.channels) == 1:
+            self.pargs.setdefault(
+                'title',
+                usetex_tex('%s (%s)' % (str(self.channels[0]), self.etg)),
+            )
+
         # initialise figure
         plot = self.init_plot()
         ax = plot.gca()
         ax.grid(True, which='both')
-
-        # work out labels
-        labels = self.pargs.pop('labels', self.channels)
-        if isinstance(labels, string_types):
-            labels = labels.split(',')
-        labels = map(lambda s: str(s).strip('\n '), labels)
 
         # get colouring params
         cmap = self.pargs.pop('cmap')
@@ -162,33 +164,14 @@ class TriggerDataPlot(TriggerPlotMixin, TimeSeriesDataPlot):
         loudest_by = self.pargs.pop('loudest-by', None)
 
         # get plot arguments
-        plotargs = []
-        for i in range(len(self.channels)):
-            plotargs.append(dict())
-        # get plot arguments
-        for key in ['vmin', 'vmax', 'edgecolor', 'facecolor', 'cmap', 's',
-                    'marker', 'rasterized']:
-            try:
-                val = self.pargs.pop(key)
-            except KeyError:
-                continue
-            if key == 'facecolor' and len(self.channels) > 1 and val is None:
-                val = color_cycle()
-            if key == 'marker' and len(self.channels) > 1 and val is None:
-                val = marker_cycle()
-            elif isinstance(val, (list, tuple, cycle)):
-                val = cycle(val)
-            else:
-                val = cycle([val] * len(self.channels))
-            for i in range(len(self.channels)):
-                plotargs[i][key] = val.next()
+        plotargs = self.parse_plot_kwargs()
 
         # add data
         valid = SegmentList([self.span])
         if self.state and not self.all_data:
             valid &= self.state.active
         ntrigs = 0
-        for channel, label, pargs in zip(self.channels, labels, plotargs):
+        for channel, pargs in zip(self.channels, plotargs):
             try:
                 channel = get_channel(channel)
             except ValueError:
@@ -224,13 +207,10 @@ class TriggerDataPlot(TriggerPlotMixin, TimeSeriesDataPlot):
 
             ax.scatter(table[xcolumn], table[ycolumn],
                        c=table[ccolumn] if ccolumn else None,
-                       label=label, **pargs)
+                       **pargs)
 
         # customise plot
         legendargs = self.parse_legend_kwargs(markerscale=3)
-        if len(self.channels) == 1:
-            self.pargs.setdefault('title', label_to_latex(
-                '%s (%s)' % (str(self.channels[0]), self.etg)))
         for axis in ('x', 'y'):  # prevent zeros on log scale
             scale = getattr(ax, 'get_{0}scale'.format(axis))()
             lim = getattr(ax, 'get_{0}lim'.format(axis))()
@@ -470,36 +450,59 @@ class TriggerHistogramPlot(TriggerPlotMixin, get_plot('histogram')):
         for arr, d, pargs in zip(data, livetime, histargs):
             # set range if not given
             if pargs.get('range') is None:
+                # get default_range
+                orientation = pargs.setdefault('orientation', 'vertical')
+                if orientation == 'vertical':
+                    default_range = None if ax.get_autoscalex_on() else ax.get_xlim()
+                else:
+                    default_range = None if ax.get_autoscaley_on() else ax.get_ylim()
+
                 pargs['range'] = self._get_range(
-                    d,
+                    arr,
                     # use range from first dataset if already calculated
                     range=histargs[0].get('range'),
-                    # use xlim if manually set (user or INI)
-                    xlim=None if ax.get_autoscalex_on() else ax.get_xlim(),
+                    # use axis lim if manually set (user or INI)
+                    xlim=default_range,
                 )
+            # set xlim from range if user didn't set it
+            if orientation == 'vertical' and ax.get_autoscalex_on():
+                self.pargs['xlim'] = pargs['range']
+            elif orientation == 'horizontal' and ax.get_autoscaley_on():
+                self.pargs['ylim'] = pargs['range']
+
             pargs.setdefault('label', None)
             if pargs.get('log', True):
                 pargs.setdefault('bottom', 1e-200)
             ax.hist(arr, **pargs)
 
-        # tight scale the axes
-        try:
-            d = pargs.pop('orientation', 'vertical')
-        except NameError:
-            pass
-        else:
-            if d == 'vertical':
-                ax.autoscale_view(tight=True, scaley=False)
-            elif d == 'horizontal':
-                ax.autoscale_view(tight=True, scalex=False)
-
         # customise plot
+        self.finalize_limits(ax, self.pargs)
         self.apply_parameters(ax, **self.pargs)
         if len(self.channels) > 1:
-            plot.add_legend(ax=ax, **legendargs)
+            ax.legend(**legendargs)
 
         # finalise
         return self.finalize()
+
+    def finalize_limits(self, ax, pargs):
+        for axis in ('x', 'y'):
+            auto = getattr(ax, 'get_autoscale{}_on'.format(axis))()
+            interval = getattr(ax.dataLim, 'interval{}'.format(axis))
+            scale = getattr(ax, 'get_{}scale'.format(axis))()
+            scaling = lambda x: x * 2 if scale == 'log' else lambda x: x * (1.05)
+            if not auto:
+                continue
+            bound = pargs.pop('{}bound'.format(axis), None)
+
+            # lower bound only
+            if isinstance(bound, Number):
+               bound = (bound, scaling(interval[1]))
+
+            # anything else is fine
+            if bound is not None:
+                pargs['{}bound'.format(axis)] = bound
+        return pargs
+
 
 register_plot(TriggerHistogramPlot)
 

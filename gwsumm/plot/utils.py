@@ -35,6 +35,7 @@ LINE_PARAMS = [
 ]
 COLLECTION_PARAMS = [
     'cmap', 'vmin', 'vmax', 'marker', 's', 'norm', 'rasterized',
+    'facecolor', 'edgecolor',
 ]
 IMAGE_PARAMS = [
     'imshow', 'cmap', 'vmin', 'vmax', 'norm', 'rasterized', 'extent',

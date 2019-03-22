@@ -33,6 +33,8 @@ from dateutil import tz
 
 import numpy
 
+from MarkupPy import markup
+
 from gwpy.time import Time
 
 from .registry import (get_tab, register_tab)

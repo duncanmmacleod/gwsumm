@@ -256,9 +256,7 @@ def update_missing_channel_params(channel, **kwargs):
     target = get_channel(str(channel))
     if isinstance(channel, Channel):
         for param in ['unit', 'sample_rate', 'frametype']:
-            if getattr(target, param) is None or (
-                    param == 'unit' and
-                    getattr(target, param) is Unit('undef')):
+            if getattr(target, param) in {None, "None", Unit('undef')}:
                 setattr(target, param, getattr(channel, param))
     for param in kwargs:
         if getattr(target, param) is None:

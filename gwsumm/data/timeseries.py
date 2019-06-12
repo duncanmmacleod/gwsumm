@@ -304,6 +304,8 @@ def find_frame_type(channel):
     otherwise the frametype will be guessed based on the channel name and
     any trend options given
     """
+    if channel.frametype == "None":  # not sure how this happens, but it does
+        channel.frametype = None
     if (channel.frametype is None and
             channel.type is None and
             channel.trend is not None):
